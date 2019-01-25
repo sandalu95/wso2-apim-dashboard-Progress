@@ -1,0 +1,13 @@
+{
+  "en": {
+    "config.error.heading": "Configuration Error !",
+    "config.error.body": "Cannot fetch provider configuration for Top API Creators widget",
+    "widget.heading": "TOP API CREATORS",
+    "table.heading.creator": "CREATOR",
+    "table.heading.apicount": "API COUNT",
+    "sort.label.title": "Sort",
+    "filter.label.title": "Filter By",
+    "filter.column.menu.heading": "Column Name",
+    "filter.search.placeholder": "Search Field"
+  }
+}
