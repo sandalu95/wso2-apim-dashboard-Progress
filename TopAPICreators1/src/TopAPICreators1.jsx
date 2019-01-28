@@ -94,7 +94,6 @@ class TopAPICreators1 extends Widget {
             },
         };
 
-
         this.state = {
             width: this.props.glContainer.width,
             height: this.props.glContainer.height,

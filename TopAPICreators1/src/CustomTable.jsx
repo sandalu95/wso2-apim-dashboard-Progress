@@ -44,7 +44,7 @@ import CustomTableHead from './CustomTableHead';
  * @param {object} a - data field
  * @param {object} b - data field
  * @param {string} orderBy - column to sort table
- * @return {number} - value related to the comparision of two data fields
+ * @return {number}
  * */
 function desc(a, b, orderBy) {
     if (b[orderBy] < a[orderBy]) {
@@ -60,7 +60,7 @@ function desc(a, b, orderBy) {
  * Stabilize the data set and sort the data fields
  * @param {object} array - data set
  * @param {object} cmp - method to sort
- * @return {object} - df
+ * @return {object}
  * */
 function stableSort(array, cmp) {
     const stabilizedThis = array.map((el, index) => [el, index]);
@@ -76,7 +76,7 @@ function stableSort(array, cmp) {
  * Set the value received from desc() according to 'order'
  * @param {string} order - desc or asc
  * @param {string} orderBy - column to sort table
- * @return {object} - vfdve
+ * @return {object}
  * */
 function getSorting(order, orderBy) {
     return order === 'desc' ? (a, b) => desc(a, b, orderBy) : (a, b) => -desc(a, b, orderBy);
