@@ -1,13 +1,14 @@
 {
   "en": {
-    "config.error.heading": "Configuration Error !",
     "config.error.body": "Cannot fetch provider configuration for Top APP Creators widget",
-    "widget.heading": "TOP APP CREATORS",
-    "table.heading.creator": "CREATOR",
-    "table.heading.appcount": "APP COUNT",
-    "sort.label.title": "Sort",
-    "filter.label.title": "Filter By",
+    "config.error.heading": "Configuration Error !",
     "filter.column.menu.heading": "Column Name",
-    "filter.search.placeholder": "Search Field"
+    "filter.label.title": "Filter By",
+    "filter.search.placeholder": "Search Field",
+    "limit": "Limit :",
+    "sort.label.title": "Sort",
+    "table.heading.appcount": "APP COUNT",
+    "table.heading.creator": "CREATOR",
+    "widget.heading": "TOP APP CREATORS"
   }
 }

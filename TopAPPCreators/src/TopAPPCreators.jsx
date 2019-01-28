@@ -180,7 +180,7 @@ class TopAPPCreators extends Widget {
             });
             message.data.forEach((dataUnit) => {
                 percentage = (dataUnit[1] / sum) * 100;
-                data.push([dataUnit[0], dataUnit[1], dataUnit[0] + ' : ' + percentage + '%']);
+                data.push([dataUnit[0], dataUnit[1], dataUnit[0] + ' : ' + percentage.toFixed(2) + '%']);
             });
             this.setState({ legenddata, data });
             this.setQueryParam(limit);
@@ -240,7 +240,7 @@ class TopAPPCreators extends Widget {
                     <form style={this.styles.form} noValidate autoComplete='off'>
                         <TextField
                             id='limit-number'
-                            label='Limit :'
+                            label={<FormattedMessage id='limit' defaultMessage='Limit :' />}
                             value={this.state.limit}
                             onChange={this.handleChange}
                             type='number'
@@ -360,6 +360,5 @@ class TopAPPCreators extends Widget {
         }
     }
 }
-
 
 global.dashboard.registerWidget('TopAPPCreators', TopAPPCreators);
