@@ -264,7 +264,7 @@ const styles = theme => ({
 });
 
 /**
- * Create React Component for Top Subscribers
+ * Create React Component for Top Subscribers Table
  */
 class CustomTable extends React.Component {
     state = {

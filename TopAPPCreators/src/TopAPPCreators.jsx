@@ -215,9 +215,11 @@ class TopAPPCreators extends Widget {
      * @memberof TopAPPCreators
      * */
     getAppCreators() {
+        const themeName = this.props.muiTheme.name;
+
         return (
             <div style={{
-                backgroundColor: this.props.muiTheme.name === 'dark' ? '#0e1e33' : '#fff',
+                backgroundColor: themeName === 'dark' ? '#0e1e33' : '#fff',
                 width: '80%',
                 margin: '5% auto',
                 padding: '10% 5%',
@@ -225,7 +227,7 @@ class TopAPPCreators extends Widget {
             >
                 <div style={this.styles.headingWrapper}>
                     <h3 style={{
-                        borderBottom: this.props.muiTheme.name === 'dark' ? '1px solid #fff' : '1px solid #02212f',
+                        borderBottom: themeName === 'dark' ? '1px solid #fff' : '1px solid #02212f',
                         paddingBottom: '10px',
                         margin: 'auto',
                         textAlign: 'left',

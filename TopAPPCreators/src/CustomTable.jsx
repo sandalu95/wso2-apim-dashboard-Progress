@@ -264,7 +264,7 @@ const styles = theme => ({
 });
 
 /**
- * Create React Component for Top APP Creators
+ * Create React Component for Top APP Creators Table
  */
 class CustomTable extends React.Component {
     state = {
