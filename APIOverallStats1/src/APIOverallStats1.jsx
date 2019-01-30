@@ -33,11 +33,17 @@ const darkTheme = createMuiTheme({
     palette: {
         type: 'dark',
     },
+    typography: {
+        useNextVariants: true,
+    },
 });
 
 const lightTheme = createMuiTheme({
     palette: {
         type: 'light',
+    },
+    typography: {
+        useNextVariants: true,
     },
 });
 
