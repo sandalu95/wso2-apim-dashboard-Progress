@@ -32,11 +32,10 @@ import InputLabel from '@material-ui/core/InputLabel';
 import Input from '@material-ui/core/Input';
 import Paper from '@material-ui/core/Paper';
 import Typography from '@material-ui/core/Typography';
-import { VictoryAxis, VictoryLabel, VictoryLine } from 'victory';
+import { VictoryAxis, VictoryLabel, VictoryLine, VictoryTooltip } from 'victory';
 import { defineMessages, IntlProvider, FormattedMessage } from 'react-intl';
 import localeJSON from './resources/locale.json';
 import CustomTable from './CustomTable';
-import Constants from './Constants';
 
 const darkTheme = createMuiTheme({
     palette: {
@@ -55,6 +54,13 @@ const lightTheme = createMuiTheme({
         useNextVariants: true,
     },
 });
+
+const creadtedByKeys = {
+    all: 'all',
+    me: 'me',
+};
+
+const queryParamKey = 'apis';
 
 /**
  * Language
@@ -82,13 +88,6 @@ class APICreatedAnalytics extends Widget {
         super(props);
 
         this.styles = {
-            button: {
-                backgroundColor: '#1d216b',
-                width: '40%',
-                height: '10%',
-                color: '#fff',
-                marginTop: '3%',
-            },
             headingWrapper: {
                 height: '10%',
                 margin: 'auto',
@@ -99,6 +98,10 @@ class APICreatedAnalytics extends Widget {
                 height: '10%',
                 margin: 'auto',
             },
+            form: {
+                display: 'flex',
+                flexWrap: 'wrap',
+            },
             formControl: {
                 margin: 5,
                 minWidth: 120,
@@ -106,11 +109,19 @@ class APICreatedAnalytics extends Widget {
             selectEmpty: {
                 marginTop: 10,
             },
-            form: {
-                display: 'flex',
-                flexWrap: 'wrap',
+            dataWrapper: {
+                height: '80%',
             },
-            axisYears: {
+            chartWrapper: {
+                width: '70%',
+                height: '100%',
+                float: 'left',
+            },
+            svgWrapper: {
+                height: '100%',
+                width: '100%',
+            },
+            axisTime: {
                 grid: {
                     stroke: tick => (tick === 0 ? 'transparent' : '#313f46'),
                     strokeWidth: 1,
@@ -122,13 +133,24 @@ class APICreatedAnalytics extends Widget {
                     strokeWidth: 1,
                 },
             },
-            labelOne: {
+            tickLabel: {
+                fill: '#fff',
+                fontFamily: '#fff',
+                fontSize: 8,
+            },
+            axisLabel: {
                 fill: '#fff',
                 fontFamily: 'inherit',
                 fontSize: 8,
                 fontStyle: 'italic',
             },
-            axisOne: {
+            labelCount: {
+                fill: '#fff',
+                fontFamily: 'inherit',
+                fontSize: 8,
+                fontStyle: 'italic',
+            },
+            axisCount: {
                 grid: {
                     stroke: tick => (tick === 0 ? 'transparent' : '#313f46'),
                     strokeWidth: 1,
@@ -141,8 +163,25 @@ class APICreatedAnalytics extends Widget {
                     fontSize: 8,
                 },
             },
-            lineOne: {
+            lineData: {
                 data: { stroke: '#fff', strokeWidth: 2 },
+            },
+            tooltip: {
+                fill: '#fff',
+                fontSize: 8,
+            },
+            tableWrapper: {
+                width: '30%',
+                height: '100%',
+                float: 'right',
+                textAlign: 'right',
+            },
+            button: {
+                backgroundColor: '#1d216b',
+                width: '40%',
+                height: '10%',
+                color: '#fff',
+                marginTop: '3%',
             },
         };
 
@@ -152,9 +191,9 @@ class APICreatedAnalytics extends Widget {
             createdBy: 'all',
             timeTo: null,
             timeFrom: null,
-            dataSet: [],
+            chartData: [],
             tableData: [],
-            xAxis: [],
+            xAxisTicks: [],
             maxCount: 0,
         };
 
@@ -207,7 +246,6 @@ class APICreatedAnalytics extends Widget {
      * @memberof APICreatedAnalytics
      * */
     assembleQuery() {
-        const { queryParamKey, creadtedByKeys } = Constants;
         const { timeFrom, timeTo } = this.state;
         const queryParam = super.getGlobalState(queryParamKey);
         let createdBy = creadtedByKeys.all;
@@ -239,34 +277,39 @@ class APICreatedAnalytics extends Widget {
     handleDataReceived(message) {
         if (message.data) {
             const { createdBy } = this.state;
-            const xAxis = [];
-            const dataSet = [];
+            const xAxisTicks = [];
+            const chartData = [];
             const tableData = [];
-            let maxCount = 0;
-
-            this.setState({ dataSet: [], tableData: [] });
-
             let index = 0;
+
+            this.setState({ chartData: [], tableData: [] });
+
             message.data.forEach((dataUnit) => {
-                dataSet.push({ x: new Date(dataUnit[3]).getTime(), y: dataUnit[4] + index++ });
-                tableData.push([(dataUnit[1] + ' ' + dataUnit[2]).toString(), Moment(dataUnit[3]).format('YYYY-MMM-DD hh:mm:ss')]);
+                chartData.push({
+                    x: new Date(dataUnit[3]).getTime(),
+                    y: dataUnit[4] + index,
+                    label: 'CREATED_TIME:' + Moment(dataUnit[3]).format('YYYY-MMM-DD hh:mm:ss') + '\nCOUNT:' + (dataUnit[4] + index++),
+                });
+                tableData.push([
+                    (dataUnit[1] + ' ' + dataUnit[2]).toString(),
+                    Moment(dataUnit[3]).format('YYYY-MMM-DD hh:mm:ss'),
+                ]);
             });
 
-            maxCount = dataSet[dataSet.length - 1].y;
+            const maxCount = chartData[chartData.length - 1].y;
 
-            const first = new Date(dataSet[0].x).getTime();
-            const last = new Date(dataSet[dataSet.length - 1].x).getTime();
+            const first = new Date(chartData[0].x).getTime();
+            const last = new Date(chartData[chartData.length - 1].x).getTime();
             const interval = (last - first) / 10;
-
-            let amount = 0;
-            xAxis.push(first);
+            let duration = 0;
+            xAxisTicks.push(first);
             for (let i = 1; i <= 10; i++) {
-                amount = interval * i;
-                xAxis.push(new Date(first + amount).getTime());
+                duration = interval * i;
+                xAxisTicks.push(new Date(first + duration).getTime());
             }
 
             this.setState({
-                dataSet, tableData, xAxis, maxCount,
+                chartData, tableData, xAxisTicks, maxCount,
             });
             this.setQueryParam(createdBy);
         }
@@ -278,7 +321,6 @@ class APICreatedAnalytics extends Widget {
      * @memberof APICreatedAnalytics
      * */
     setQueryParam(createdBy) {
-        const { queryParamKey } = Constants;
         super.setGlobalState(queryParamKey, { createdBy });
     }
 
@@ -304,9 +346,9 @@ class APICreatedAnalytics extends Widget {
         return (
             <div
                 style={{
-                    padding: '2.5% 1.5%',
-                    height: '85%',
                     background: themeName === 'dark' ? '#0e1e33' : '#fff',
+                    height: '85%',
+                    padding: '2.5% 1.5%',
                     margin: '1.5%',
                 }}
             >
@@ -327,7 +369,7 @@ class APICreatedAnalytics extends Widget {
                     <form style={this.styles.form} noValidate autoComplete='off'>
                         <FormControl style={this.styles.formControl}>
                             <InputLabel shrink htmlFor='createdBy-label-placeholder'>
-                                Created By
+                                <FormattedMessage id='createdBy.label' defaultMessage='Created By' />
                             </InputLabel>
                             <Select
                                 value={this.state.createdBy}
@@ -337,19 +379,23 @@ class APICreatedAnalytics extends Widget {
                                 name='createdBy'
                                 style={this.styles.selectEmpty}
                             >
-                                <MenuItem value='all'>All</MenuItem>
-                                <MenuItem value='me'>Me</MenuItem>
+                                <MenuItem value='all'>
+                                    <FormattedMessage id='all.menuItem' defaultMessage='All' />
+                                </MenuItem>
+                                <MenuItem value='me'>
+                                    <FormattedMessage id='me.menuItem' defaultMessage='Me' />
+                                </MenuItem>
                             </Select>
                         </FormControl>
                     </form>
                 </div>
-                <div style={{height:'80%'}}>
-                    <div style={{width:'70%',float:'left',height:'100%'}}>
-                        <svg viewBox='200 50 300 300'style={{height:'100%',width:'100%'}}>
+                <div style={this.styles.dataWrapper}>
+                    <div style={this.styles.chartWrapper}>
+                        <svg viewBox='200 50 300 300' style={this.styles.svgWrapper}>
                             <VictoryLabel
                                 x={30}
                                 y={65}
-                                style={this.styles.labelOne}
+                                style={this.styles.labelCount}
                                 text='COUNT'
                             />
                             <g transform='translate(0, 40)'>
@@ -357,23 +403,28 @@ class APICreatedAnalytics extends Widget {
                                     scale='time'
                                     standalone={false}
                                     width={700}
-                                    style={this.styles.axisYears}
-                                    label="CREATED TIME"
-                                    tickValues={this.state.xAxis}
+                                    style={this.styles.axisTime}
+                                    label='CREATED TIME'
+                                    tickValues={this.state.xAxisTicks}
                                     tickFormat={
                                         (x) => {
                                             return Moment(x).format('YY/MM/DD hh:mm');
                                         }
                                     }
-                                    tickLabelComponent={<VictoryLabel dx={-5} dy={-5} angle = {-40} style = {{
-                                        fill: '#fff',
-                                        fontFamily: '#fff',
-                                        fontSize: 8,
-                                    }} />}
-                                    axisLabelComponent={<VictoryLabel dy={20} style={{ fill: '#fff',
-                                        fontFamily: 'inherit',
-                                        fontSize: 8,
-                                        fontStyle: 'italic'}} />}
+                                    tickLabelComponent={(
+                                        <VictoryLabel
+                                            dx={-5}
+                                            dy={-5}
+                                            angle={-40}
+                                            style={this.styles.tickLabel}
+                                        />
+                                    )}
+                                    axisLabelComponent={(
+                                        <VictoryLabel
+                                            dy={20}
+                                            style={this.styles.axisLabel}
+                                        />
+                                    )}
                                 />
                                 <VictoryAxis
                                     dependentAxis
@@ -382,24 +433,37 @@ class APICreatedAnalytics extends Widget {
                                     offsetX={50}
                                     orientation='left'
                                     standalone={false}
-                                    style={this.styles.axisOne}
+                                    style={this.styles.axisCount}
                                 />
                                 <VictoryLine
-                                    data={this.state.dataSet}
+                                    data={this.state.chartData}
+                                    labels={d => d.label}
                                     width={700}
                                     domain={{
-                                        x: [this.state.xAxis[0], this.state.xAxis[this.state.xAxis.length - 1]],
+                                        x: [this.state.xAxisTicks[0], this.state.xAxisTicks[this.state.xAxisTicks.length - 1]],
                                         y: [1, this.state.maxCount],
                                     }}
-
                                     scale={{ x: 'time', y: 'linear' }}
                                     standalone={false}
-                                    style={this.styles.lineOne}
+                                    style={this.styles.lineData}
+                                    labelComponent={(
+                                        <VictoryTooltip
+                                            orientation='right'
+                                            pointerLength={0}
+                                            cornerRadius={2}
+                                            flyoutStyle={{
+                                                fill: '#000',
+                                                fillOpacity: '0.5',
+                                                strokeWidth: 1,
+                                            }}
+                                            style={this.styles.tooltip}
+                                        />
+                                    )}
                                 />
                             </g>
                         </svg>
                     </div>
-                    <div style={{width:'30%',float:'right',height:'100%',textAlign:'right'}}>
+                    <div style={this.styles.tableWrapper}>
                         <CustomTable
                             tableData={this.state.tableData}
                         />
@@ -412,7 +476,7 @@ class APICreatedAnalytics extends Widget {
                             }}
                         >
                             <ArrowBack />
-                            Back
+                            <FormattedMessage id='back.btn' defaultMessage='BACK' />
                         </Button>
                     </div>
                 </div>

@@ -34,11 +34,17 @@ const darkTheme = createMuiTheme({
     palette: {
         type: 'dark',
     },
+    typography: {
+        useNextVariants: true,
+    },
 });
 
 const lightTheme = createMuiTheme({
     palette: {
         type: 'light',
+    },
+    typography: {
+        useNextVariants: true,
     },
 });
 
@@ -197,7 +203,7 @@ class TopAPICreators1 extends Widget {
     }
 
     /**
-     * updates query param values
+     * Handle Select Change
      * @param {Event} event - listened event
      * @memberof TopAPICreators1
      * */
