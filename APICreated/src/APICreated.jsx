@@ -21,19 +21,13 @@
 import React from 'react';
 import Widget from '@wso2-dashboards/widget';
 import Moment from 'moment';
-import WebFont from 'webfontloader';
 import PlayCircleFilled from '@material-ui/icons/PlayCircleFilled';
 import Typography from '@material-ui/core/Typography';
 import Paper from '@material-ui/core/Paper';
 import { defineMessages, IntlProvider, FormattedMessage } from 'react-intl';
 import localeJSON from './resources/locale.json';
 import CustomIcon from './CustomIcon';
-
-WebFont.load({
-    google: {
-        families: ['Open+Sans:600', 'sans-serif'],
-    },
-});
+import './resources/style.css';
 
 /**
  * Language
@@ -181,9 +175,11 @@ class APICreated extends Widget {
      */
     render() {
         const themeName = this.props.muiTheme.name;
-        const { localeMessages } = this.state;
+        const {
+            localeMessages, faultyProviderConf, totalCount, weekCount,
+        } = this.state;
 
-        if (this.state.faultyProviderConf === true) {
+        if (faultyProviderConf === true) {
             return (
                 <IntlProvider locale={language} messages={localeMessages}>
                     <div
@@ -260,17 +256,17 @@ class APICreated extends Widget {
                                     color: themeName === 'dark' ? '#fff' : '#2571a7',
                                 }}
                             >
-                                {this.state.totalCount}
+                                {totalCount}
                             </h1>
                             <h3 style={this.styles.typeText}>
-                                {this.state.totalCount === '01' ? 'API' : 'APIS'}
+                                {totalCount === '01' ? 'API' : 'APIS'}
                             </h3>
                             <p style={this.styles.weekCount}>
                                 [
                                 {' '}
-                                {this.state.weekCount}
+                                {weekCount}
                                 {' '}
-                                {this.state.weekCount === '01' ? 'API' : 'APIS'}
+                                {weekCount === '01' ? 'API' : 'APIS'}
                                 {' '}
                                 <FormattedMessage id='within.week.text' defaultMessage='WITHIN LAST WEEK ' />
                                 ]
