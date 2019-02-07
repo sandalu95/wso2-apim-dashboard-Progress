@@ -28,13 +28,9 @@ import PropTypes from 'prop-types';
  * @returns {ReactElement} Render the Custom Icon
  */
 export default function CustomIcon(props) {
-    let {
+    const {
         strokeColor, width, height, style,
     } = props;
-    strokeColor = strokeColor !== undefined ? strokeColor : '#8b8e95';
-    width = width !== undefined ? width : 32;
-    height = height !== undefined ? height : 32;
-    style = style !== undefined ? style : '';
 
     return (
         <svg

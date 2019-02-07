@@ -24,10 +24,13 @@ import Moment from 'moment';
 import PlayCircleFilled from '@material-ui/icons/PlayCircleFilled';
 import Typography from '@material-ui/core/Typography';
 import Paper from '@material-ui/core/Paper';
-import { defineMessages, IntlProvider, FormattedMessage } from 'react-intl';
-import localeJSON from './resources/locale.json';
+import CircularProgress from '@material-ui/core/CircularProgress';
+import Axios from 'axios';
+import {
+    addLocaleData, defineMessages, IntlProvider, FormattedMessage,
+} from 'react-intl';
 import CustomIcon from './CustomIcon';
-import './resources/style.css';
+import './css/style.css';
 
 /**
  * Language
@@ -59,7 +62,7 @@ class APICreated extends Widget {
             height: this.props.glContainer.height,
             totalCount: 0,
             weekCount: 0,
-            localeMessages: {},
+            localeMessages: null,
         };
 
         this.styles = {
@@ -105,6 +108,10 @@ class APICreated extends Widget {
                 bottom: '13%',
                 right: '8%',
             },
+            loadingIcon: {
+                margin: 'auto',
+                display: 'block',
+            },
         };
 
         this.props.glContainer.on('resize', () => this.setState({
@@ -112,23 +119,31 @@ class APICreated extends Widget {
             height: this.props.glContainer.height,
         }));
 
-        this.handleDataReceived = this.handleDataReceived.bind(this);
+        this.assembleweekQuery = this.assembleweekQuery.bind(this);
+        this.assembletotalQuery = this.assembletotalQuery.bind(this);
+        this.handleWeekCountReceived = this.handleWeekCountReceived.bind(this);
+        this.handleTotalCountReceived = this.handleTotalCountReceived.bind(this);
+        this.loadLocale = this.loadLocale.bind(this);
     }
 
     componentDidMount() {
-        const locale = (languageWithoutRegionCode || language || 'en');
-        this.setState({ localeMessages: defineMessages(localeJSON[locale]) || {} });
+        const locale = languageWithoutRegionCode || language;
+        this.loadLocale(locale).catch(() => {
+            this.loadLocale().catch(() => {
+                // TODO: Show error message.
+            });
+        });
 
         super.getWidgetConfiguration(this.props.widgetID)
             .then((message) => {
                 this.setState({
                     providerConfig: message.data.configs.providerConfig,
-                }, () => super.getWidgetChannelManager().subscribeWidget(this.props.id, this.handleDataReceived, message.data.configs.providerConfig));
+                }, this.assembletotalQuery);
             })
-            . catch((error) => {
+            .catch((error) => {
                 console.error("Error occurred when loading widget '" + this.props.widgetID + "'. " + error);
                 this.setState({
-                    faultyProviderConf: true,
+                    faultyProviderConfig: true,
                 });
             });
     }
@@ -138,34 +153,78 @@ class APICreated extends Widget {
     }
 
     /**
-     * Format data retrieved and loads to the widget
+     * Load locale file.
+     * @param {string} locale Locale name
+     * @returns {Promise} Promise
+     */
+    loadLocale(locale = 'en') {
+        return new Promise((resolve, reject) => {
+            Axios.get(`${window.contextPath}/extensions/widgets/APICreated/locales/${locale}.json`)
+                .then((response) => {
+                    // eslint-disable-next-line global-require, import/no-dynamic-require
+                    addLocaleData(require(`react-intl/locale-data/${locale}`));
+                    this.setState({ localeMessages: defineMessages(response.data) });
+                    resolve();
+                })
+                .catch(error => reject(error));
+        });
+    }
+
+    /**
+     * Formats the siddhi query
+     * @memberof APICreated
+     * */
+    assembletotalQuery() {
+        if (this.state.providerConfig) {
+            const dataProviderConfigs = _.cloneDeep(this.state.providerConfig);
+            dataProviderConfigs.configs.config.queryData.query = dataProviderConfigs.configs.config.queryData.totalQuery;
+            super.getWidgetChannelManager().subscribeWidget(this.props.id, this.handleTotalCountReceived, dataProviderConfigs);
+        }
+    }
+
+    /**
+     * Formats data received from assembletotalQuery
      * @param {object} message - data retrieved
      * @memberof APICreated
      * */
-    handleDataReceived(message) {
-        let totalCount = 0;
-        let weekCount = 0;
-        const currentDate = new Date();
-        const weekStart = new Date(currentDate.getTime() - (7 * 24 * 60 * 60 * 1000));
-
-        message.data.forEach((dataUnit) => {
-            totalCount += dataUnit[1];
-            if (Moment(dataUnit[0]).unix() >= Moment(weekStart).unix()) {
-                weekCount += dataUnit[1];
-            }
-        });
-
-        if (totalCount < 10) {
-            totalCount = `0${totalCount}`;
+    handleTotalCountReceived(message) {
+        if (message.data.length !== 0) {
+            let [[totalCount]] = message.data;
+            totalCount = totalCount < 10 ? ('0' + totalCount).slice(-2) : totalCount;
+            this.setState({ totalCount });
         }
-        if (weekCount < 10) {
-            weekCount = `0${weekCount}`;
-        }
+        super.getWidgetChannelManager().unsubscribeWidget(this.props.id);
+        this.assembleweekQuery();
+    }
 
-        this.setState({
-            totalCount,
-            weekCount,
-        });
+    /**
+     * Formats the siddhi query using selected options
+     * @memberof APICreated
+     * */
+    assembleweekQuery() {
+        const weekStart = Moment().subtract(7, 'days');
+
+        if (this.state.providerConfig) {
+            const dataProviderConfigs = _.cloneDeep(this.state.providerConfig);
+            let query = dataProviderConfigs.configs.config.queryData.weekQuery;
+            query = query
+                .replace('{{weekStart}}', Moment(weekStart).format('YYYY-MM-DD HH:mm:ss.SSSSSSSSS'));
+            dataProviderConfigs.configs.config.queryData.query = query;
+            super.getWidgetChannelManager().subscribeWidget(this.props.id, this.handleWeekCountReceived, dataProviderConfigs);
+        }
+    }
+
+    /**
+     * Formats data received from assembleweekQuery
+     * @param {object} message - data retrieved
+     * @memberof APICreated
+     * */
+    handleWeekCountReceived(message) {
+        if (message.data.length !== 0) {
+            let [[weekCount]] = message.data;
+            weekCount = weekCount < 10 ? ('0' + weekCount).slice(-2) : weekCount;
+            this.setState({ weekCount });
+        }
     }
 
     /**
@@ -179,125 +238,133 @@ class APICreated extends Widget {
             localeMessages, faultyProviderConf, totalCount, weekCount,
         } = this.state;
 
-        if (faultyProviderConf === true) {
-            return (
-                <IntlProvider locale={language} messages={localeMessages}>
-                    <div
-                        style={{
-                            margin: 'auto',
-                            width: '50%',
-                            marginTop: '20%',
-                        }}
-                    >
-                        <Paper
-                            elevation={1}
+        if (localeMessages) {
+            if (faultyProviderConf) {
+                return (
+                    <IntlProvider locale={languageWithoutRegionCode} messages={localeMessages}>
+                        <div
                             style={{
-                                padding: '5%',
-                                border: '2px solid #4555BB',
+                                margin: 'auto',
+                                width: '50%',
+                                marginTop: '20%',
                             }}
                         >
-                            <Typography variant='h5' component='h3'>
-                                <FormattedMessage id='config.error.heading' defaultMessage='Configuration Error !' />
-                            </Typography>
-                            <Typography component='p'>
-                                <FormattedMessage
-                                    id='config.error.body'
-                                    defaultMessage='Cannot fetch provider configuration for API CREATED widget'
+                            <Paper
+                                elevation={1}
+                                style={{
+                                    padding: '5%',
+                                    border: '2px solid #4555BB',
+                                }}
+                            >
+                                <Typography variant='h5' component='h3'>
+                                    <FormattedMessage id='config.error.heading' defaultMessage='Configuration Error !' />
+                                </Typography>
+                                <Typography component='p'>
+                                    <FormattedMessage
+                                        id='config.error.body'
+                                        defaultMessage='Cannot fetch provider configuration for API CREATED widget'
+                                    />
+                                </Typography>
+                            </Paper>
+                        </div>
+                    </IntlProvider>
+                );
+            } else {
+                return (
+                    <IntlProvider locale={languageWithoutRegionCode} messages={localeMessages}>
+                        <div
+                            style={{
+                                background: themeName === 'dark'
+                                    ? 'linear-gradient(to right, rgb(4, 31, 51) 0%, rgb(37, 113, 167) 46%, rgb(42, 71, 101) 100%'
+                                    : '#fff',
+                                width: '90%',
+                                height: '85%',
+                                margin: '5% 5%',
+                                fontFamily: "'Open Sans', sans-serif",
+                            }}
+                        >
+                            <div style={this.styles.headingWrapper}>
+                                <h3
+                                    style={{
+                                        borderBottom: themeName === 'dark' ? '1.5px solid #fff' : '2px solid #2571a7',
+                                        paddingBottom: '10px',
+                                        margin: 'auto',
+                                        marginTop: 0,
+                                        textAlign: 'left',
+                                        fontWeight: 'normal',
+                                        letterSpacing: 1.5,
+                                    }}
+                                >
+                                    <FormattedMessage id='widget.heading' defaultMessage='TOTAL API COUNT' />
+                                </h3>
+                            </div>
+                            <div style={this.styles.cIconWrapper}>
+                                <CustomIcon
+                                    strokeColor={themeName === 'dark' ? '#fff' : '#2571a7'}
+                                    width='50%'
+                                    height='50%'
+                                    style={this.styles.cIcon}
                                 />
-                            </Typography>
-                        </Paper>
-                    </div>
-                </IntlProvider>
-            );
+                            </div>
+                            <div style={this.styles.dataWrapper}>
+                                <h1
+                                    style={{
+                                        margin: 'auto',
+                                        textAlign: 'center',
+                                        fontSize: '300%',
+                                        display: 'inline',
+                                        color: themeName === 'dark' ? '#fff' : '#2571a7',
+                                    }}
+                                >
+                                    {totalCount}
+                                </h1>
+                                <h3 style={this.styles.typeText}>
+                                    {totalCount === '01' ? 'API' : 'APIS'}
+                                </h3>
+                                <p style={this.styles.weekCount}>
+                                    [
+                                    {' '}
+                                    {weekCount}
+                                    {' '}
+                                    {weekCount === '01' ? 'API' : 'APIS'}
+                                    {' '}
+                                    <FormattedMessage id='within.week.text' defaultMessage='WITHIN LAST WEEK ' />
+                                    ]
+                                </p>
+                            </div>
+                            <button
+                                type='submit'
+                                style={{
+                                    display: 'block',
+                                    width: '100%',
+                                    height: '21%',
+                                    background: themeName === 'dark'
+                                        ? 'linear-gradient(to right, rgba(37, 38, 41, 0.75) 0%, rgba(252, 252, 252, 0) 100%)'
+                                        : '#fff',
+                                    border: 'none',
+                                    borderTop: themeName === 'dark' ? 'none' : '1.5px solid #000',
+                                    color: themeName === 'dark' ? '#fff' : '#000',
+                                    textAlign: 'left',
+                                    padding: '0 5%',
+                                    fontSize: '90%',
+                                    letterSpacing: 1,
+                                }}
+                                onClick={() => {
+                                    window.location.href = '/portal/dashboards/apimanalytics/API-Created-Analysis';
+                                }}
+                            >
+                                <FormattedMessage id='overtime.btn.text' defaultMessage='Overtime Analysis' />
+                                <PlayCircleFilled style={this.styles.icon} />
+                            </button>
+                        </div>
+                    </IntlProvider>
+                );
+            }
         } else {
             return (
-                <IntlProvider locale={language} messages={localeMessages}>
-                    <div
-                        style={{
-                            background: themeName === 'dark'
-                                ? 'linear-gradient(to right, rgb(4, 31, 51) 0%, rgb(37, 113, 167) 46%, rgb(42, 71, 101) 100%'
-                                : '#fff',
-                            width: '90%',
-                            height: '85%',
-                            margin: '5% 5%',
-                            fontFamily: "'Open Sans', sans-serif",
-                        }}
-                    >
-                        <div style={this.styles.headingWrapper}>
-                            <h3
-                                style={{
-                                    borderBottom: themeName === 'dark' ? '1.5px solid #fff' : '2px solid #2571a7',
-                                    paddingBottom: '10px',
-                                    margin: 'auto',
-                                    marginTop: 0,
-                                    textAlign: 'left',
-                                    fontWeight: 'normal',
-                                    letterSpacing: 1.5,
-                                }}
-                            >
-                                <FormattedMessage id='widget.heading' defaultMessage='TOTAL API COUNT' />
-                            </h3>
-                        </div>
-                        <div style={this.styles.cIconWrapper}>
-                            <CustomIcon
-                                strokeColor={themeName === 'dark' ? '#fff' : '#2571a7'}
-                                width='50%'
-                                height='50%'
-                                style={this.styles.cIcon}
-                            />
-                        </div>
-                        <div style={this.styles.dataWrapper}>
-                            <h1
-                                style={{
-                                    margin: 'auto',
-                                    textAlign: 'center',
-                                    fontSize: '300%',
-                                    display: 'inline',
-                                    color: themeName === 'dark' ? '#fff' : '#2571a7',
-                                }}
-                            >
-                                {totalCount}
-                            </h1>
-                            <h3 style={this.styles.typeText}>
-                                {totalCount === '01' ? 'API' : 'APIS'}
-                            </h3>
-                            <p style={this.styles.weekCount}>
-                                [
-                                {' '}
-                                {weekCount}
-                                {' '}
-                                {weekCount === '01' ? 'API' : 'APIS'}
-                                {' '}
-                                <FormattedMessage id='within.week.text' defaultMessage='WITHIN LAST WEEK ' />
-                                ]
-                            </p>
-                        </div>
-                        <button
-                            type='submit'
-                            style={{
-                                display: 'block',
-                                width: '100%',
-                                height: '21%',
-                                background: themeName === 'dark'
-                                    ? 'linear-gradient(to right, rgba(37, 38, 41, 0.75) 0%, rgba(252, 252, 252, 0) 100%)'
-                                    : '#fff',
-                                border: 'none',
-                                borderTop: themeName === 'dark' ? 'none' : '1.5px solid #000',
-                                color: themeName === 'dark' ? '#fff' : '#000',
-                                textAlign: 'left',
-                                padding: '0 5%',
-                                fontSize: '90%',
-                                letterSpacing: 1,
-                            }}
-                            onClick={() => {
-                                window.location.href = '/portal/dashboards/apimanalytics/API-Created-Analysis';
-                            }}
-                        >
-                            <FormattedMessage id='overtime.btn.text' defaultMessage='Overtime Analysis' />
-                            <PlayCircleFilled style={this.styles.icon} />
-                        </button>
-                    </div>
-                </IntlProvider>
+                <div>
+                    <CircularProgress style={this.styles.loadingIcon} />
+                </div>
             );
         }
     }
