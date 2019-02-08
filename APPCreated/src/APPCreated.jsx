@@ -30,7 +30,6 @@ import {
     addLocaleData, defineMessages, IntlProvider, FormattedMessage,
 } from 'react-intl';
 import CustomIcon from './CustomIcon';
-import './css/style.css';
 
 /**
  * Language
@@ -90,6 +89,7 @@ class APPCreated extends Widget {
             },
             weekCount: {
                 margin: 0,
+                marginTop: '5%',
                 color: 'rgb(163, 187, 230)',
                 letterSpacing: 1,
                 fontSize: '80%',
@@ -159,7 +159,7 @@ class APPCreated extends Widget {
      */
     loadLocale(locale = 'en') {
         return new Promise((resolve, reject) => {
-            Axios.get(`${window.contextPath}/extensions/widgets/APPCreated/locales/${locale}.json`)
+            Axios.get(`${window.contextPath}/public/extensions/widgets/APPCreated/locales/${locale}.json`)
                 .then((response) => {
                     // eslint-disable-next-line global-require, import/no-dynamic-require
                     addLocaleData(require(`react-intl/locale-data/${locale}`));
@@ -280,7 +280,6 @@ class APPCreated extends Widget {
                                 background: themeName === 'dark'
                                     ? 'linear-gradient(to right, rgb(3, 8, 68) 0%, rgb(47, 93, 197) 46%, rgb(42, 49, 101) 100%)'
                                     : '#fff',
-                                fontFamily: "'Open Sans', sans-serif",
                             }}
                         >
                             <div style={this.styles.headingWrapper}>
@@ -289,7 +288,6 @@ class APPCreated extends Widget {
                                         borderBottom: themeName === 'dark' ? '1.5px solid #fff' : '2px solid #040f96',
                                         paddingBottom: '10px',
                                         margin: 'auto',
-                                        marginTop: 0,
                                         textAlign: 'left',
                                         fontWeight: 'normal',
                                         letterSpacing: 1.5,

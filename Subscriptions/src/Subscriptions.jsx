@@ -30,7 +30,6 @@ import {
     addLocaleData, defineMessages, IntlProvider, FormattedMessage,
 } from 'react-intl';
 import CustomIcon from './CustomIcon';
-import './css/style.css';
 
 /**
  * Language
@@ -90,6 +89,7 @@ class Subscriptions extends Widget {
             },
             weekCount: {
                 margin: 0,
+                marginTop: '5%',
                 color: 'rgb(215, 189, 218)',
                 letterSpacing: 1,
                 fontSize: '80%',
@@ -159,7 +159,7 @@ class Subscriptions extends Widget {
      */
     loadLocale(locale = 'en') {
         return new Promise((resolve, reject) => {
-            Axios.get(`${window.contextPath}/extensions/widgets/Subscriptions/locales/${locale}.json`)
+            Axios.get(`${window.contextPath}/public/extensions/widgets/Subscriptions/locales/${locale}.json`)
                 .then((response) => {
                     // eslint-disable-next-line global-require, import/no-dynamic-require
                     addLocaleData(require(`react-intl/locale-data/${locale}`));

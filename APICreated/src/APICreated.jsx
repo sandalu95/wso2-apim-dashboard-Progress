@@ -30,7 +30,6 @@ import {
     addLocaleData, defineMessages, IntlProvider, FormattedMessage,
 } from 'react-intl';
 import CustomIcon from './CustomIcon';
-import './css/style.css';
 
 /**
  * Language
@@ -90,6 +89,7 @@ class APICreated extends Widget {
             },
             weekCount: {
                 margin: 0,
+                marginTop: '5%',
                 color: 'rgb(135,205,223)',
                 letterSpacing: 1,
                 fontSize: '80%',
@@ -159,7 +159,7 @@ class APICreated extends Widget {
      */
     loadLocale(locale = 'en') {
         return new Promise((resolve, reject) => {
-            Axios.get(`${window.contextPath}/extensions/widgets/APICreated/locales/${locale}.json`)
+            Axios.get(`${window.contextPath}/public/extensions/widgets/APICreated/locales/${locale}.json`)
                 .then((response) => {
                     // eslint-disable-next-line global-require, import/no-dynamic-require
                     addLocaleData(require(`react-intl/locale-data/${locale}`));
@@ -280,7 +280,6 @@ class APICreated extends Widget {
                                 width: '90%',
                                 height: '85%',
                                 margin: '5% 5%',
-                                fontFamily: "'Open Sans', sans-serif",
                             }}
                         >
                             <div style={this.styles.headingWrapper}>
@@ -289,7 +288,6 @@ class APICreated extends Widget {
                                         borderBottom: themeName === 'dark' ? '1.5px solid #fff' : '2px solid #2571a7',
                                         paddingBottom: '10px',
                                         margin: 'auto',
-                                        marginTop: 0,
                                         textAlign: 'left',
                                         fontWeight: 'normal',
                                         letterSpacing: 1.5,
