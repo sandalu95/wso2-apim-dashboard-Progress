@@ -24,9 +24,12 @@ import { Scrollbars } from 'react-custom-scrollbars';
 import { MuiThemeProvider, createMuiTheme } from '@material-ui/core/styles';
 import Typography from '@material-ui/core/Typography';
 import Paper from '@material-ui/core/Paper';
+import CircularProgress from '@material-ui/core/CircularProgress';
 import { VictoryPie, VictoryLegend, VictoryTooltip } from 'victory';
-import { defineMessages, IntlProvider, FormattedMessage } from 'react-intl';
-import localeJSON from './resources/locale.json';
+import Axios from 'axios';
+import {
+    addLocaleData, defineMessages, IntlProvider, FormattedMessage,
+} from 'react-intl';
 import CustomTable from './CustomTable';
 
 const darkTheme = createMuiTheme({
@@ -76,9 +79,10 @@ class APIOverallStats1 extends Widget {
             width: this.props.glContainer.width,
             height: this.props.glContainer.height,
             availableAPIData: [],
+            legendData: [],
+            topAPIID: [],
             topAPIData: [],
-            legenddata: [],
-            localeMessages: {},
+            localeMessages: null,
         };
 
         this.styles = {
@@ -91,6 +95,10 @@ class APIOverallStats1 extends Widget {
                 height: '15%',
                 display: 'flex',
                 marginRight: 'auto',
+            },
+            loadingIcon: {
+                margin: 'auto',
+                display: 'block',
             },
         };
 
@@ -105,12 +113,16 @@ class APIOverallStats1 extends Widget {
         this.handleApiAvailableReceived = this.handleApiAvailableReceived.bind(this);
         this.handleAPIDataReceived = this.handleAPIDataReceived.bind(this);
         this.handleTopAPIReceived = this.handleTopAPIReceived.bind(this);
-        // this.assembleQuery = this.assembleQuery.bind(this);
+        this.loadLocale = this.loadLocale.bind(this);
     }
 
     componentDidMount() {
-        const locale = (languageWithoutRegionCode || language || 'en');
-        this.setState({ localeMessages: defineMessages(localeJSON[locale]) || {} });
+        const locale = languageWithoutRegionCode || language;
+        this.loadLocale(locale).catch(() => {
+            this.loadLocale().catch(() => {
+                // TODO: Show error message.
+            });
+        });
 
         super.getWidgetConfiguration(this.props.widgetID)
             .then((message) => {
@@ -121,13 +133,32 @@ class APIOverallStats1 extends Widget {
             .catch((error) => {
                 console.error("Error occurred when loading widget '" + this.props.widgetID + "'. " + error);
                 this.setState({
-                    faultyProviderConfig: true,
+                    faultyProviderConf: true,
                 });
             });
     }
 
     componentWillUnmount() {
         super.getWidgetChannelManager().unsubscribeWidget(this.props.id);
+    }
+
+    /**
+     * Load locale file.
+     * @param {string} locale Locale name
+     * @returns {Promise} Promise
+     * @memberof APIOverallStats1
+     */
+    loadLocale(locale = 'en') {
+        return new Promise((resolve, reject) => {
+            Axios.get(`${window.contextPath}/public/extensions/widgets/APIOverallStats1/locales/${locale}.json`)
+                .then((response) => {
+                    // eslint-disable-next-line global-require, import/no-dynamic-require
+                    addLocaleData(require(`react-intl/locale-data/${locale}`));
+                    this.setState({ localeMessages: defineMessages(response.data) });
+                    resolve();
+                })
+                .catch(error => reject(error));
+        });
     }
 
     /**
@@ -148,14 +179,14 @@ class APIOverallStats1 extends Widget {
      * @memberof APIOverallStats1
      * */
     handleApiAvailableReceived(message) {
-        const legenddata = [];
+        const legendData = [];
         const availableAPIData = [];
         let sum = 0;
         let percentage = 0;
         if (message.data) {
             message.data.forEach((dataUnit) => {
-                if (!legenddata.includes({ name: dataUnit[0] })) {
-                    legenddata.push({ name: dataUnit[0] });
+                if (!legendData.includes({ name: dataUnit[0] })) {
+                    legendData.push({ name: dataUnit[0] });
                 }
                 sum += dataUnit[1];
             });
@@ -163,7 +194,7 @@ class APIOverallStats1 extends Widget {
                 percentage = (dataUnit[1] / sum) * 100;
                 availableAPIData.push([dataUnit[0], dataUnit[1], dataUnit[0] + ' : ' + percentage.toFixed(2) + '%']);
             });
-            this.setState({ legenddata, availableAPIData });
+            this.setState({ legendData, availableAPIData });
         }
         super.getWidgetChannelManager().unsubscribeWidget(this.props.id);
         this.assembleTopAPIQuery();
@@ -189,7 +220,7 @@ class APIOverallStats1 extends Widget {
     handleTopAPIReceived(message) {
         if (message.data) {
             this.setState({
-                topAPIData: message.data,
+                topAPIID: message.data,
             });
         }
         super.getWidgetChannelManager().unsubscribeWidget(this.props.id);
@@ -214,46 +245,21 @@ class APIOverallStats1 extends Widget {
      * @memberof APIOverallStats1
      * */
     handleAPIDataReceived(message) {
-        const { topAPIData } = this.state;
-        const topAPIDataNew = [];
-        topAPIData.forEach((apidata) => {
-            let api = apidata[0];
+        const { topAPIID } = this.state;
+        const topAPIData = [];
+        topAPIID.forEach((apidata) => {
+            const apiID = apidata[0];
+            let apiName = '';
             message.data.forEach((dataUnit) => {
-                if (dataUnit[0] === api) {
-                    api = dataUnit[1] + ' ' + dataUnit[2];
+                if (dataUnit[0] === apiID) {
+                    apiName = dataUnit[1] + ' ' + dataUnit[2];
                 }
             });
-            topAPIDataNew.push([api, apidata[1]]);
+            topAPIData.push([apiName, apidata[1]]);
         });
-        this.setState({
-            topAPIData: topAPIDataNew,
-        });
+        this.setState({ topAPIData });
         super.getWidgetChannelManager().unsubscribeWidget(this.props.id);
     }
-
-    /**
-    assembleQuery(query) {
-        if (this.state.providerConfig) {
-            const dataProviderConfigs = _.cloneDeep(this.state.providerConfig);
-            let siddhiQuery = '';
-            switch (query) {
-                case 'apiavailablequery':
-                    siddhiQuery = dataProviderConfigs.configs.config.queryData.apiavailablequery;
-                    break;
-                case 'topapiquery':
-                    siddhiQuery = dataProviderConfigs.configs.config.queryData.topapiquery;
-                    break;
-                case 'apilistquery':
-                    siddhiQuery = dataProviderConfigs.configs.config.queryData.apilistquery;
-                    break;
-                default:
-                    siddhiQuery = '';
-            }
-            dataProviderConfigs.configs.config.queryData.query = siddhiQuery;
-            // super.getWidgetChannelManager().subscribeWidget(this.props.id, this.handleAPIDataReceived, dataProviderConfigs);
-        }
-    }
-     * */
 
     /**
      * Return the content of APIOverallStats1 widget
@@ -321,7 +327,7 @@ class APIOverallStats1 extends Widget {
                                 data={this.state.availableAPIData}
                                 x={0}
                                 y={1}
-                                labels={d => d[2]}
+                                labels={d => `${d[0]} : ${((d[1] / (_.sumBy(this.state.availableAPIData, o => o[1]))) * 100).toFixed(2)}%`}
                             />
                             <VictoryLegend
                                 standalone={false}
@@ -336,7 +342,7 @@ class APIOverallStats1 extends Widget {
                                         fontSize: 25,
                                     },
                                 }}
-                                data={this.state.legenddata}
+                                data={this.state.legendData}
                             />
                         </svg>
                     </div>
@@ -355,51 +361,61 @@ class APIOverallStats1 extends Widget {
      */
     render() {
         const themeName = this.props.muiTheme.name;
-        const { localeMessages } = this.state;
+        const {
+            localeMessages, faultyProviderConf, height,
+        } = this.state;
 
-        if (this.state.faultyProviderConfig === true) {
-            return (
-                <IntlProvider locale={language} messages={localeMessages}>
-                    <div
-                        style={{
-                            margin: 'auto',
-                            width: '50%',
-                            marginTop: '20%',
-                        }}
-                    >
-                        <Paper
-                            elevation={1}
+        if (localeMessages) {
+            if (faultyProviderConf) {
+                return (
+                    <IntlProvider locale={languageWithoutRegionCode} messages={localeMessages}>
+                        <div
                             style={{
-                                padding: '5%',
-                                border: '2px solid #4555BB',
+                                margin: 'auto',
+                                width: '50%',
+                                marginTop: '20%',
                             }}
                         >
-                            <Typography variant='h5' component='h3'>
-                                <FormattedMessage id='config.error.heading' defaultMessage='Configuration Error !' />
-                            </Typography>
-                            <Typography component='p'>
-                                <FormattedMessage
-                                    id='config.error.body'
-                                    defaultMessage='Cannot fetch provider configuration for API Overall Stats widget'
-                                />
-                            </Typography>
-                        </Paper>
-                    </div>
-                </IntlProvider>
-            );
+                            <Paper
+                                elevation={1}
+                                style={{
+                                    padding: '5%',
+                                    border: '2px solid #4555BB',
+                                }}
+                            >
+                                <Typography variant='h5' component='h3'>
+                                    <FormattedMessage id='config.error.heading' defaultMessage='Configuration Error !' />
+                                </Typography>
+                                <Typography component='p'>
+                                    <FormattedMessage
+                                        id='config.error.body'
+                                        defaultMessage='Cannot fetch provider configuration for API Overall Stats widget'
+                                    />
+                                </Typography>
+                            </Paper>
+                        </div>
+                    </IntlProvider>
+                );
+            } else {
+                return (
+                    <IntlProvider locale={languageWithoutRegionCode} messages={localeMessages}>
+                        <MuiThemeProvider
+                            theme={themeName === 'dark' ? darkTheme : lightTheme}
+                        >
+                            <Scrollbars
+                                style={{ height }}
+                            >
+                                {this.getOverallStats()}
+                            </Scrollbars>
+                        </MuiThemeProvider>
+                    </IntlProvider>
+                );
+            }
         } else {
             return (
-                <IntlProvider locale={language} messages={localeMessages}>
-                    <MuiThemeProvider
-                        theme={themeName === 'dark' ? darkTheme : lightTheme}
-                    >
-                        <Scrollbars
-                            style={{ height: this.state.height }}
-                        >
-                            {this.getOverallStats()}
-                        </Scrollbars>
-                    </MuiThemeProvider>
-                </IntlProvider>
+                <div>
+                    <CircularProgress style={this.styles.loadingIcon} />
+                </div>
             );
         }
     }
