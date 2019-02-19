@@ -27,9 +27,9 @@ import Paper from '@material-ui/core/Paper';
 import CircularProgress from '@material-ui/core/CircularProgress';
 import Axios from 'axios';
 import {
-    addLocaleData, defineMessages, IntlProvider, FormattedMessage,
+    defineMessages, IntlProvider, FormattedMessage,
 } from 'react-intl';
-import CustomIcon from './CustomIcon';
+import ApiIcon from './ApiIcon';
 
 /**
  * Language
@@ -57,8 +57,8 @@ class APICreated extends Widget {
         super(props);
 
         this.state = {
-            width: this.props.glContainer.width,
-            height: this.props.glContainer.height,
+            width: this.props.width,
+            height: this.props.height,
             totalCount: 0,
             weekCount: 0,
             localeMessages: null,
@@ -114,11 +114,6 @@ class APICreated extends Widget {
             },
         };
 
-        this.props.glContainer.on('resize', () => this.setState({
-            width: this.props.glContainer.width,
-            height: this.props.glContainer.height,
-        }));
-
         this.assembleweekQuery = this.assembleweekQuery.bind(this);
         this.assembletotalQuery = this.assembletotalQuery.bind(this);
         this.handleWeekCountReceived = this.handleWeekCountReceived.bind(this);
@@ -127,21 +122,18 @@ class APICreated extends Widget {
     }
 
     componentDidMount() {
+        const { widgetID } = this.props;
         const locale = languageWithoutRegionCode || language;
-        this.loadLocale(locale).catch(() => {
-            this.loadLocale().catch(() => {
-                // TODO: Show error message.
-            });
-        });
+        this.loadLocale(locale);
 
-        super.getWidgetConfiguration(this.props.widgetID)
+        super.getWidgetConfiguration(widgetID)
             .then((message) => {
                 this.setState({
                     providerConfig: message.data.configs.providerConfig,
                 }, this.assembletotalQuery);
             })
             .catch((error) => {
-                console.error("Error occurred when loading widget '" + this.props.widgetID + "'. " + error);
+                console.error("Error occurred when loading widget '" + widgetID + "'. " + error);
                 this.setState({
                     faultyProviderConfig: true,
                 });
@@ -155,19 +147,13 @@ class APICreated extends Widget {
     /**
      * Load locale file.
      * @param {string} locale Locale name
-     * @returns {Promise} Promise
      */
-    loadLocale(locale = 'en') {
-        return new Promise((resolve, reject) => {
-            Axios.get(`${window.contextPath}/public/extensions/widgets/APICreated/locales/${locale}.json`)
-                .then((response) => {
-                    // eslint-disable-next-line global-require, import/no-dynamic-require
-                    addLocaleData(require(`react-intl/locale-data/${locale}`));
-                    this.setState({ localeMessages: defineMessages(response.data) });
-                    resolve();
-                })
-                .catch(error => reject(error));
-        });
+    loadLocale(locale) {
+        Axios.get(`${window.contextPath}/public/extensions/widgets/APICreated/locales/${locale}.json`)
+            .then((response) => {
+                this.setState({ localeMessages: defineMessages(response.data) });
+            })
+            .catch(error => console.error(error));
     }
 
     /**
@@ -175,11 +161,11 @@ class APICreated extends Widget {
      * @memberof APICreated
      * */
     assembletotalQuery() {
-        if (this.state.providerConfig) {
-            const dataProviderConfigs = _.cloneDeep(this.state.providerConfig);
-            dataProviderConfigs.configs.config.queryData.query = dataProviderConfigs.configs.config.queryData.totalQuery;
-            super.getWidgetChannelManager().subscribeWidget(this.props.id, this.handleTotalCountReceived, dataProviderConfigs);
-        }
+        const { providerConfig } = this.state;
+
+        const dataProviderConfigs = _.cloneDeep(providerConfig);
+        dataProviderConfigs.configs.config.queryData.query = dataProviderConfigs.configs.config.queryData.totalQuery;
+        super.getWidgetChannelManager().subscribeWidget(this.props.id, this.handleTotalCountReceived, dataProviderConfigs);
     }
 
     /**
@@ -202,16 +188,15 @@ class APICreated extends Widget {
      * @memberof APICreated
      * */
     assembleweekQuery() {
+        const { providerConfig } = this.state;
         const weekStart = Moment().subtract(7, 'days');
 
-        if (this.state.providerConfig) {
-            const dataProviderConfigs = _.cloneDeep(this.state.providerConfig);
-            let query = dataProviderConfigs.configs.config.queryData.weekQuery;
-            query = query
-                .replace('{{weekStart}}', Moment(weekStart).format('YYYY-MM-DD HH:mm:ss.SSSSSSSSS'));
-            dataProviderConfigs.configs.config.queryData.query = query;
-            super.getWidgetChannelManager().subscribeWidget(this.props.id, this.handleWeekCountReceived, dataProviderConfigs);
-        }
+        const dataProviderConfigs = _.cloneDeep(providerConfig);
+        let query = dataProviderConfigs.configs.config.queryData.weekQuery;
+        query = query
+            .replace('{{weekStart}}', Moment(weekStart).format('YYYY-MM-DD HH:mm:ss.SSSSSSSSS'));
+        dataProviderConfigs.configs.config.queryData.query = query;
+        super.getWidgetChannelManager().subscribeWidget(this.props.id, this.handleWeekCountReceived, dataProviderConfigs);
     }
 
     /**
@@ -237,6 +222,7 @@ class APICreated extends Widget {
         const {
             localeMessages, faultyProviderConf, totalCount, weekCount,
         } = this.state;
+        const { }
 
         if (localeMessages) {
             if (faultyProviderConf) {
@@ -297,7 +283,7 @@ class APICreated extends Widget {
                                 </h3>
                             </div>
                             <div style={this.styles.cIconWrapper}>
-                                <CustomIcon
+                                <ApiIcon
                                     strokeColor={themeName === 'dark' ? '#fff' : '#2571a7'}
                                     width='50%'
                                     height='50%'
@@ -331,7 +317,7 @@ class APICreated extends Widget {
                                 </p>
                             </div>
                             <button
-                                type='submit'
+                                type='button'
                                 style={{
                                     display: 'block',
                                     width: '100%',
@@ -346,9 +332,10 @@ class APICreated extends Widget {
                                     padding: '0 5%',
                                     fontSize: '90%',
                                     letterSpacing: 1,
+                                    cursor: 'pointer',
                                 }}
                                 onClick={() => {
-                                    window.location.href = '/portal/dashboards/apimanalytics/API-Created-Analysis';
+                                    window.location.href = './API-Created-Analysis';
                                 }}
                             >
                                 <FormattedMessage id='overtime.btn.text' defaultMessage='Overtime Analysis' />
